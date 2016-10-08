@@ -148,6 +148,13 @@ describe('Authorization', () => {
         .catch(done);
     });
   });
+
+  describe ('me', done => {
+    it ('returns error if sent without token');
+    it ('accepts token as header');
+    it ('accepts token as body');
+    it ('accepts token as query');
+  });
 });
 
 function dropUsers (callback) {

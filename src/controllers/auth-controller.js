@@ -4,7 +4,8 @@ const config = require('../config');
 
 module.exports = {
   register: register,
-  login: login
+  login: login,
+  getCurrentUser: getCurrentUser
 };
 
 function register (req, res) {
@@ -46,6 +47,20 @@ function login (req, res) {
     .catch(error => {
       res.status(422).send(error);
     })
+}
+
+function getCurrentUser (req, res) {
+  _getAndVerifyToken(req)
+    .then(decoded => {
+      return _findUser(decoded._doc); // TODO there should probably be a better way
+    })
+    .then(user => {
+      let response = {email: user.email, id: user._id};
+      res.send(response);
+    })
+    .catch(error => {
+      res.status(403).send(error);
+    });
 }
 
 // private
@@ -99,4 +114,19 @@ function _isUserValid (user, params) {
 
 function _isRegistrationValid (params) {
   return params.email && params.password && params.confirmPassword && params.password === params.confirmPassword;
+}
+
+function _getAndVerifyToken (request) {
+  let token = request.body.token || request.query.token || request.headers['x-access-token'];
+
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, config.key, function(err, decoded) {
+      if (err) {
+        reject({message: 'Failed to authenticate token.' });
+      } else {
+        resolve(decoded);
+      }
+    });
+  });
+
 }

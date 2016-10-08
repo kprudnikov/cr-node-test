@@ -10,5 +10,7 @@ router.use(bodyParser.json());
 
 router.route('/register').post(auth.register);
 router.route('/login').post(auth.login);
+router.route('/me').get(auth.getCurrentUser);
+
 
 module.exports = router;
