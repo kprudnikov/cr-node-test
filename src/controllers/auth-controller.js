@@ -34,13 +34,13 @@ function register (req, res) {
 function login (req, res) {
   let params = _filterParams(req.body);
 
-  return _findUser(params)
+  return _findUser({email: params.email})
     .then((user) => {
       if (user && _isUserValid(user, params)) {
         let token = _generateToken(user);
         res.send({token});
       } else {
-        return Promise.reject({message: 'Please check your username or password'})
+        return Promise.reject({message: 'Please check your username and password'})
       }
     })
     .catch(error => {
@@ -94,11 +94,7 @@ function _createUser (params) {
 }
 
 function _isUserValid (user, params) {
-  for (key in user) {
-    if (user[key] !== params[key]) return false;
-  }
-
-  return true;
+  return user.email === params.email && user.password === params.password;
 }
 
 function _isRegistrationValid (params) {
