@@ -5,7 +5,8 @@ const config = require('../config');
 module.exports = {
   register: register,
   login: login,
-  getCurrentUser: getCurrentUser
+  getCurrentUser: getCurrentUser,
+  editCurrentUser: editCurrentUser
 };
 
 function register (req, res) {
@@ -61,6 +62,39 @@ function getCurrentUser (req, res) {
     .catch(error => {
       res.status(401).send(error);
     });
+}
+
+function editCurrentUser (req, res) {
+  _getAndVerifyToken(req)
+    .then(decoded => {
+      return _findUser(decoded._doc);
+    })
+    .then(user => {
+      let response;
+      if (req.body.new_password) { // TODO add some validation here
+        if (user.password === req.body.current_password) {
+          user.password = req.body.new_password;
+        } else {
+          res.status(401).send({message: 'Wrong password'});
+        }
+      }
+
+      user.email = req.body.email ? req.body.email : user.email;
+      user.save((error, updatedUser) => {
+        if (error) {
+          res.status(500).send({message: 'Couldn\'t update user'});
+        } else {
+          response = {
+            id: updatedUser._id,
+            email: updatedUser.email
+          };
+          res.send(response);
+        }
+      })
+    })
+    .catch(error => {
+      res.status(401).send(error);
+    })
 }
 
 // private
