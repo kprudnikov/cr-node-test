@@ -59,7 +59,7 @@ function getCurrentUser (req, res) {
       res.send(response);
     })
     .catch(error => {
-      res.status(403).send(error);
+      res.status(401).send(error);
     });
 }
 
@@ -114,10 +114,11 @@ function _isUserValid (user, params) {
 
 function _isRegistrationValid (params) {
   return params.email && params.password && params.confirmPassword && params.password === params.confirmPassword;
+  // also add validation
 }
 
 function _getAndVerifyToken (request) {
-  let token = request.body.token || request.query.token || request.headers['x-access-token'];
+  let token = request.body.token || request.query.token || request.headers['authorization'];  // should we maybe specify authorization type?
 
   return new Promise((resolve, reject) => {
     jwt.verify(token, config.key, function(err, decoded) {

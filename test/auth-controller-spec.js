@@ -8,7 +8,7 @@ const app = require('../src/server-core');
 const {testDb, testPort, rootPath} = require('./test-config');
 
 const db = mongoose.connection;
-const fetchOptons = {
+const fetchOptions = {
   headers: {'Content-Type': 'application/json', 'User-Agent': 'Fetch'},
   method: 'POST',
 };
@@ -20,7 +20,7 @@ describe('Authorization', () => {
 
   describe('Registration', () => {
     it ('returns an error when user has params missing', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       options.body = JSON.stringify({email: 'test@test.com'});
 
       fetch(`${rootPath}/register`, options)
@@ -36,7 +36,7 @@ describe('Authorization', () => {
     });
 
     it ('returns error when password and password confirmation don\'t match', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       options.body = JSON.stringify({email: 'test@test.com', password: 'password', confirmPassword: 'drowssap'})
 
       fetch(`${rootPath}/register`, options)
@@ -52,7 +52,7 @@ describe('Authorization', () => {
     });
 
     it ('returns token when data is valid', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       options.body = JSON.stringify({email: 'test@test.com', password: 'password', confirmPassword: 'password'});
 
       fetch(`${rootPath}/register`, options)
@@ -68,7 +68,7 @@ describe('Authorization', () => {
     });
 
     it ('returns an error when email is taken', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       options.body = JSON.stringify({email: 'taken@email.com', password: 'newpassword', confirmPassword: 'newpassword'})
 
       fetch(`${rootPath}/register`, options)
@@ -93,7 +93,7 @@ describe('Authorization', () => {
 
   describe('Login', () => {
     it ('returns an error if user doesn\'t exist', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       options.body = JSON.stringify({email: 'nonexistent@email.com', password: 'nonexistent'});
 
       fetch(`${rootPath}/login`, options)
@@ -109,7 +109,7 @@ describe('Authorization', () => {
     });
 
     it ('returns an error if existing user tries to login without password', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       let body = {email: 'userwithoutpassword@email.com', password: 'nopassword', confirmPassword: 'nopassword'};
       options.body = JSON.stringify(body);
 
@@ -130,7 +130,7 @@ describe('Authorization', () => {
     });
 
     it ('returns token if email and password are correct', done => {
-      let options = Object.create(fetchOptons);
+      let options = Object.create(fetchOptions);
       let body = {email: 'validuser@email.com', password: 'validpassword', confirmPassword: 'validpassword'};
       options.body = JSON.stringify(body);
       fetch(`${rootPath}/register`, options)
@@ -149,17 +149,57 @@ describe('Authorization', () => {
     });
   });
 
-  describe ('me', done => {
-    it ('returns error if sent without token');
-    it ('accepts token as header');
-    it ('accepts token as body');
-    it ('accepts token as query');
+  describe ('get me', () => {
+    let token;
+    let mePath = `${rootPath}/me`;
+
+    before(done => {
+      let options = Object.create(fetchOptions);
+      options.body = JSON.stringify({email: 'me@email.com', password: 'mypassword', confirmPassword: 'mypassword'});
+
+      fetch(`${rootPath}/register`, options)
+        .then(response => {
+          return response.json();
+        })
+        .then(body => {
+          token = body.token;
+          done();
+        })
+        .catch(done);
+    });
+
+    it ('returns an error if sent without token', done => {
+      fetch(mePath, {method: 'get'})
+        .then(response => {
+          assert(response.status === 401);
+          return response.json();
+        })
+        .then(body => {
+          expect(body.message).to.exist;
+          done();
+        })
+        .catch(done);
+    });
+
+    it ('accepts token as header', done => {
+      let options = Object.create(fetchOptions);
+      options.method = 'get';
+      options.headers = Object.assign({}, fetchOptions.headers);
+      options.headers['Authorization'] = token;
+      fetchMe(mePath, options, done);
+    });
+
+    it ('accepts token as query', done => {
+      let options = Object.create(fetchOptions);
+      let path = mePath + '?token=' + token;
+      options.method = 'get';
+      fetchMe(path, {}, done);
+    });
+  });
   });
 });
 
-function dropUsers (callback) {
-  db.db.dropCollection('users', callback);
-}
+// private
 
 function init () {
   let server;
@@ -173,4 +213,22 @@ function init () {
       server.close();
     });
   });
+}
+
+function dropUsers (callback) {
+  db.db.dropCollection('users', callback);
+}
+
+function fetchMe (path, options, done) {
+  fetch(path, options)
+    .then(response => {
+      assert(response.ok);
+      return response.json();
+    })
+    .then(body => {
+      expect(body.id).to.exist;
+      expect(body.email).to.exist;
+      done();
+    })
+    .catch(done);
 }
