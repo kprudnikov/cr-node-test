@@ -1,16 +1,16 @@
-const {User, permittedParams} = require('../models/user');
+'use strict';
+
+const {permittedParams, findUser, createUser} = require('../models/user');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 
 module.exports = {
-  register: register,
-  login: login,
-  getCurrentUser: getCurrentUser,
-  editCurrentUser: editCurrentUser
+  register,
+  login
 };
 
 function register (req, res) {
-  return _findUser({email: req.body.email})
+  return findUser({email: req.body.email})
     .then(user => {
       if (user) {
         return Promise.reject({message: 'This email is already taken'});
@@ -23,7 +23,7 @@ function register (req, res) {
         return Promise.reject({message: 'Params invalid'});
       }
     })
-    .then(_createUser)
+    .then(createUser)
     .then(_generateToken)
     .then(token => {
       res.send({token: token});
@@ -36,9 +36,9 @@ function register (req, res) {
 function login (req, res) {
   let params = _filterParams(req.body);
 
-  return _findUser({email: params.email})
+  return findUser({email: params.email})
     .then((user) => {
-      if (user && _isUserValid(user, params)) {
+      if (user && _isParamsValid(user, params)) {
         let token = _generateToken(user);
         res.send({token});
       } else {
@@ -47,53 +47,6 @@ function login (req, res) {
     })
     .catch(error => {
       res.status(422).send(error);
-    })
-}
-
-function getCurrentUser (req, res) {
-  _getAndVerifyToken(req)
-    .then(decoded => {
-      return _findUser(decoded._doc); // TODO there should probably be a better way
-    })
-    .then(user => {
-      let response = {email: user.email, id: user._id};
-      res.send(response);
-    })
-    .catch(error => {
-      res.status(401).send(error);
-    });
-}
-
-function editCurrentUser (req, res) {
-  _getAndVerifyToken(req)
-    .then(decoded => {
-      return _findUser(decoded._doc);
-    })
-    .then(user => {
-      let response;
-      if (req.body.new_password) { // TODO add some validation here
-        if (user.password === req.body.current_password) {
-          user.password = req.body.new_password;
-        } else {
-          res.status(401).send({message: 'Wrong password'});
-        }
-      }
-
-      user.email = req.body.email ? req.body.email : user.email;
-      user.save((error, updatedUser) => {
-        if (error) {
-          res.status(500).send({message: 'Couldn\'t update user'});
-        } else {
-          response = {
-            id: updatedUser._id,
-            email: updatedUser.email
-          };
-          res.send(response);
-        }
-      })
-    })
-    .catch(error => {
-      res.status(401).send(error);
     })
 }
 
@@ -117,51 +70,11 @@ function _generateToken (user) {
   });
 }
 
-function _findUser (params) {
-  return new Promise((resolve, reject) => {
-    User.findOne(params, (error, user) => { // bluebird has promisify, but let's do it hard way
-      if (error) {
-        reject({message: 'Couldn\'t find user'});
-      } else {
-        resolve(user);
-      }
-    });
-  });
-}
-
-function _createUser (params) {
-  return new Promise((resolve, reject) => {
-    new User(params) // must not save passwords as plain text
-      .save((error, user) => {
-        if (error) {
-          reject(500).send({message: 'Something went wrong'});
-        } else {
-          resolve(user);
-        }
-      });
-  });
-}
-
-function _isUserValid (user, params) {
+function _isParamsValid (user, params) {
   return user.email === params.email && user.password === params.password;
 }
 
 function _isRegistrationValid (params) {
   return params.email && params.password && params.confirmPassword && params.password === params.confirmPassword;
   // also add validation
-}
-
-function _getAndVerifyToken (request) {
-  let token = request.body.token || request.query.token || request.headers['authorization'];  // should we maybe specify authorization type?
-
-  return new Promise((resolve, reject) => {
-    jwt.verify(token, config.key, function(err, decoded) {
-      if (err) {
-        reject({message: 'Failed to authenticate token.' });
-      } else {
-        resolve(decoded);
-      }
-    });
-  });
-
 }
