@@ -1,4 +1,4 @@
-![Codeship][https://codeship.com/projects/068903b0-c608-0134-83a8-5aca8525b5fa/status?branch=master]
+![Codeship](https://codeship.com/projects/068903b0-c608-0134-83a8-5aca8525b5fa/status?branch=master)
 
 # Setup:
 
