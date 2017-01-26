@@ -134,7 +134,6 @@ describe('User', () => {
     it ('accepts token in header');
     it ('accepts token in query');
   });
-
 });
 
 // private
